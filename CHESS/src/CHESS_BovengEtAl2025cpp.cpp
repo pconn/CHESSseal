@@ -22,10 +22,6 @@ Type objective_function<Type>::operator() ()
   using namespace Eigen;
   using namespace density;
   
-  // options vec
-  //DATA_FACTOR( Options_vec );
-  // Slot 0: compute SE? 
-  
   // Data
   DATA_MATRIX( C_rus );       	// Matrix of responses (counts) of each species at each sampled location - Russian format
   DATA_MATRIX( C_us);      // same, US data format
@@ -38,7 +34,6 @@ Type objective_function<Type>::operator() ()
   DATA_IVECTOR( Day_us_i ); // day-of-survey
   
   
-  //DATA_IMATRIX( Y_s); //indicator for which sites sampled/not sampled
   DATA_MATRIX( X_s );  //design matrix for smooths
   DATA_VECTOR(I_no_ice); //use to enforce zero abundance when ice = 0
   
@@ -69,9 +64,6 @@ Type objective_function<Type>::operator() ()
   DATA_SPARSE_MATRIX(S_melt);
   DATA_INTEGER(Sdim_melt);
   DATA_MATRIX(designMatrixForReport_melt); 
-  DATA_MATRIX(designMatrix_melt_wBS);
-  DATA_MATRIX(designMatrix_melt_eBS_2012);
-  DATA_MATRIX(designMatrix_melt_eBS_2013);
   DATA_MATRIX(X_ringed_us_i); //design matrix for ringed seal availability smooths (US)
   DATA_MATRIX(X_ringed_rus_i);
   DATA_MATRIX(X_ringed_match);  // for penalty 
@@ -97,9 +89,6 @@ Type objective_function<Type>::operator() ()
   PARAMETER_VECTOR(p_logit_us);  // tweedie power
   PARAMETER_VECTOR( thin_logit_us_i );         // thinning "parameter" for each surveyed location (assumed MVN on logit scale) - bearded & ringed are stacked
   PARAMETER_VECTOR( thin_logit_rus_i );         // thinning "parameter" for each surveyed location (assumed MVN on logit scale)
-  //PARAMETER(beta0_ringed);
-  //PARAMETER(beta1_ringed);   //logistic params for ringed seal availability relative to maximum
-  //PARAMETER(beta2_ringed);   //logistic params for ringed seal availability relative to maximum
   PARAMETER_VECTOR(Beta_melt); //ringed spline params on availability
   PARAMETER(p_sp_logit); //probability of getting a species ID for US data (logit scale)
   PARAMETER_VECTOR(log_lambda);//Penalization parameters
@@ -294,9 +283,6 @@ Type objective_function<Type>::operator() ()
 
   // // Probability of thinning and misID parameters (MVN prior/penalty)
 
-  //jnll_comp(2) = 0.0;
-  //jnll_comp(1) = neg_log_density_thin_rus(thin_logit_rus_i-Thin_mu_rus_i-Day_effect_rus_big);
-  //jnll_comp(1) += neg_log_density_thin_us(thin_logit_us_i-Thin_mu_us_i-Day_effect_us_big);
   jnll_comp(1) = neg_log_density_thin_rus(thin_logit_rus_i-Thin_mu_rus_i);
   jnll_comp(1) += neg_log_density_thin_us(thin_logit_us_i-Thin_mu_us_i);
 
@@ -312,18 +298,11 @@ Type objective_function<Type>::operator() ()
     jnll_comp(2) += wt_ringed * pow(ho_match(imelt) - 1.0 / (1.0+exp(-Lin_pred_match(ho_melt(imelt)-1))),2.0);
   }
 
-  //std::cout<<"thin dens "<<jnll_comp(1)<<'\n';
-
-  
   // Total objective
   Type jnll = jnll_comp.sum();
-  //Type jnll = 0.0;
-  
-  //std::cout << jnll_comp << "\n";
-  //std::cout<<"Range "<<Range_eta<<"\n";
+
   REPORT( N );
   REPORT( Z_s );
-  //REPORT( total_abundance );
   REPORT( Beta );
   REPORT( Beta_melt);
   REPORT( thin_beta_day);
@@ -344,28 +323,16 @@ Type objective_function<Type>::operator() ()
   REPORT( phi_us );
   REPORT( power_us);
   REPORT(h_mean_obs);
-  //REPORT(N_bearded);
   REPORT(log_lambda);
 
   // Bias correction output
   vector<Type> splineForReport = designMatrixForReport*Beta;
   vector<Type> splineForReport_melt = 1.0/(1.0+exp(-(intercept_avail+designMatrixForReport_melt*Beta_melt)));
-  vector<Type> avail_pred_wBS = 1.0/(1.0+exp(-(intercept_avail+designMatrix_melt_wBS*Beta_melt)));
-  vector<Type> avail_pred_eBS_2012 = 1.0/(1.0+exp(-(intercept_avail+designMatrix_melt_eBS_2012*Beta_melt)));
-  vector<Type> avail_pred_eBS_2013 = 1.0/(1.0+exp(-(intercept_avail+designMatrix_melt_eBS_2013*Beta_melt)));
   ADREPORT(splineForReport);
   ADREPORT(splineForReport_melt);
-  ADREPORT(avail_pred_wBS);
-  ADREPORT(avail_pred_eBS_2012);
-  ADREPORT(avail_pred_eBS_2013);
   ADREPORT(intercept_avail);
   ADREPORT(Beta_melt);
     ADREPORT( N);
-  
-  //ADREPORT(Beta);
-  //if(Options_vec(0)==1){
-  //  ADREPORT( Beta );
-  //ADREPORT(Z_pred_0);
   
   return jnll;
 }
